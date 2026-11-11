@@ -52,7 +52,8 @@ export const fmtDate = (ts) => {
   return Number.isNaN(d.getTime()) ? sqlTs : d.toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
 };
 
-export const STATUS_LABEL = { new: 'Новый', paid: 'Оплачен', shipped: 'Отправлен', done: 'Завершён', cancelled: 'Отменён' };
+export const STATUS_LABEL = { pending: 'Ждёт оплаты', new: 'Новый', paid: 'Оплачен', shipped: 'Отправлен', done: 'Завершён', cancelled: 'Отменён' };
+export const PAYMENT_STATUS_LABEL = { manual: 'Перевод по чеку', awaiting: 'Ждёт оплаты картой', paid: 'Оплачено картой', failed: 'Платёж не прошёл', expired: 'Сессия оплаты истекла' };
 export const TG_LABEL = { sent: 'Отправлено', failed: 'Ошибка', disabled: 'Не настроен', pending: 'Ожидает' };
 export const CATEGORY_LABEL = {
   cpu: 'Процессоры', motherboard: 'Материнские платы', ram: 'Память', gpu: 'Видеокарты',

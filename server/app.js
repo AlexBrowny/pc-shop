@@ -8,6 +8,7 @@ import { builderRouter } from './routes/builder.js';
 import { ordersRouter } from './routes/orders.js';
 import { adminRouter } from './routes/admin.js';
 import { presetsRouter } from './routes/presets.js';
+import { stripeWebhook, stripeRouter } from './routes/stripe.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const adminUiDir = path.join(here, 'admin-ui');
@@ -34,6 +35,8 @@ export function createApp() {
     res.setHeader('Referrer-Policy', 'same-origin');
     next();
   });
+  // вебхук Stripe читает сырое тело (проверка подписи), поэтому он стоит до JSON-парсера
+  app.post('/api/stripe/webhook', express.raw({ type: 'application/json', limit: '1mb' }), stripeWebhook);
   app.use(express.json({ limit: '100kb' }));
 
   app.use('/api/admin', (_req, res, next) => {
@@ -43,6 +46,7 @@ export function createApp() {
   app.use('/api', catalogRouter);
   app.use('/api/builder', builderRouter);
   app.use('/api', ordersRouter);
+  app.use('/api', stripeRouter);
   app.use('/api', presetsRouter);
   app.use('/api', (_req, res) => res.status(404).json({ success: false, error: 'not_found' }));
 

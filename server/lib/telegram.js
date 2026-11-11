@@ -34,10 +34,13 @@ async function call(method, body) {
   return data.result;
 }
 
+const fmtMinor = (minor, currency) => new Intl.NumberFormat('en-US', { style: 'currency', currency: String(currency || 'usd').toUpperCase() }).format(minor / 100);
+
 export function formatOrderMessage(order, items) {
   const lines = items.map((i) => `• ${escapeHtml(i.brand)} ${escapeHtml(i.name)} — ${i.qty} × ${fmtUzs(i.price_uzs)}`);
+  const card = order.payment_method === 'stripe';
   return [
-    `🧾 <b>Новый заказ №${order.id}</b>`,
+    card ? `💳 <b>Новый оплаченный заказ №${order.id}</b> (карта, Stripe)` : `🧾 <b>Новый заказ №${order.id}</b>`,
     `👤 ${escapeHtml(order.customer_name)}`,
     `📞 ${escapeHtml(order.phone)}`,
     order.address ? `📍 ${escapeHtml(order.address)}` : null,
@@ -46,6 +49,7 @@ export function formatOrderMessage(order, items) {
     ...lines,
     '',
     `💰 <b>Итого: ${fmtUzs(order.total_uzs)}</b>`,
+    card && order.paid_amount != null ? `✅ Оплачено картой: <b>${fmtMinor(order.paid_amount, order.paid_currency)}</b>` : null,
     `🌐 Язык клиента: ${order.lang === 'uz' ? "o'zbek" : 'русский'}`,
   ].filter((l) => l !== null).join('\n');
 }
@@ -60,6 +64,9 @@ export async function sendOrderToTelegram(order, items) {
   try {
     await call('sendMessage', JSON.stringify({ chat_id: chatId, text: formatOrderMessage(order, items), parse_mode: 'HTML' }));
 
+    // оплата картой: чека нет, платёж подтверждён Stripe
+    if (order.payment_method === 'stripe') return { status: 'sent' };
+
     const stored = isReceiptKey(order.receipt_file) ? await getObject(RECEIPTS, order.receipt_file) : null;
     if (!stored) throw new Error('Файл чека не найден в хранилище');
     const { buffer } = stored;
@@ -70,6 +77,19 @@ export async function sendOrderToTelegram(order, items) {
     const field = asPhoto ? 'photo' : 'document';
     form.set(field, new Blob([buffer], { type: order.receipt_mime }), order.receipt_name || `receipt-${order.id}`);
     await call(asPhoto ? 'sendPhoto' : 'sendDocument', form);
+    return { status: 'sent' };
+  } catch (err) {
+    return { status: 'failed', error: scrub(err.message) };
+  }
+}
+
+/** Платёж прошёл за заказ, который к этому моменту уже отменён: менеджеру нужно вернуть деньги или оформить заказ заново. */
+export async function sendLatePaymentAlert(order) {
+  if (!(await isTelegramConfigured())) return { status: 'disabled' };
+  try {
+    const text = `⚠️ <b>Оплата за отменённый заказ №${order.id}</b>
+Stripe принял платёж ${order.paid_amount != null ? fmtMinor(order.paid_amount, order.paid_currency) : ''}, но заказ уже отменён (товар возвращён на склад). Свяжитесь с клиентом ${escapeHtml(order.phone)} или сделайте возврат в Stripe.`;
+    await call('sendMessage', JSON.stringify({ chat_id: await telegramChatId(), text, parse_mode: 'HTML' }));
     return { status: 'sent' };
   } catch (err) {
     return { status: 'failed', error: scrub(err.message) };

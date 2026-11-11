@@ -1,5 +1,5 @@
 import {
-  html, $, $$, api, toast, openModal, fmtUzs, fmtDate, STATUS_LABEL, TG_LABEL, errorText, ApiError,
+  html, $, $$, api, toast, openModal, fmtUzs, fmtDate, STATUS_LABEL, PAYMENT_STATUS_LABEL, TG_LABEL, errorText, ApiError,
 } from '/admin/common.js';
 
 const STATUSES = Object.keys(STATUS_LABEL);
@@ -63,6 +63,8 @@ export async function ordersView(main) {
 async function openOrder(id, reload) {
   const order = await api(`/orders/${id}`);
   const isPdf = order.receipt_mime === 'application/pdf';
+  const isCard = order.payment_method === 'stripe';
+  const paidSum = order.paid_amount != null ? new Intl.NumberFormat('en-US', { style: 'currency', currency: String(order.paid_currency || 'usd').toUpperCase() }).format(order.paid_amount / 100) : '';
   const receiptUrl = `/api/admin/orders/${id}/receipt`;
   const locked = order.status === 'cancelled';
   const modal = openModal(`Заказ №${order.id}`, html`
@@ -74,6 +76,7 @@ async function openOrder(id, reload) {
           <dt>Адрес</dt><dd>${order.address || '—'}</dd>
           <dt>Комментарий</dt><dd>${order.comment || '—'}</dd>
           <dt>Язык клиента</dt><dd>${order.lang === 'uz' ? "O'zbekcha" : 'Русский'}</dd>
+          <dt>Оплата</dt><dd>${PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status}${paidSum ? ` · ${paidSum}` : ''}</dd>
           <dt>Создан</dt><dd>${fmtDate(order.created_at)}</dd>
           <dt>Telegram</dt><dd>${badge(`tg-${order.telegram_status}`, TG_LABEL[order.telegram_status])}
             ${order.telegram_error ? html`<div class="form-error small">${order.telegram_error}</div>` : ''}
@@ -92,10 +95,15 @@ async function openOrder(id, reload) {
         <button class="btn primary" id="o-save">Сохранить</button>
       </section>
       <section>
+        ${isCard ? html`
+        <h3>Оплата картой (Stripe)</h3>
+        <p>${PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status}${paidSum ? html` — <strong>${paidSum}</strong>` : ''}</p>
+        ${order.stripe_payment_intent ? html`<p><a class="btn" href="https://dashboard.stripe.com/payments/${order.stripe_payment_intent}" target="_blank" rel="noopener">Открыть платёж в Stripe</a></p>` : ''}
+        <p class="muted small">Чека нет: платёж подтверждён Stripe автоматически.</p>` : html`
         <h3>Чек об оплате</h3>
         ${isPdf
           ? html`<p><a class="btn" href="${receiptUrl}" target="_blank" rel="noopener">Открыть PDF</a></p><p class="muted small">${order.receipt_name || ''}</p>`
-          : html`<a href="${receiptUrl}" target="_blank" rel="noopener"><img class="receipt" src="${receiptUrl}" alt="Чек к заказу №${order.id}"></a>`}
+          : html`<a href="${receiptUrl}" target="_blank" rel="noopener"><img class="receipt" src="${receiptUrl}" alt="Чек к заказу №${order.id}"></a>`}`}
       </section>
     </div>`, { wide: true });
 

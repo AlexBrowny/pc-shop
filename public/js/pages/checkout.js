@@ -6,7 +6,7 @@ import { actions } from '../router.js';
 
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
 
-const form = { file: null, fileError: '' };
+const form = { file: null, fileError: '', method: 'receipt' };
 
 const normalizePhone = (raw) => {
   const digits = String(raw).replace(/\D/g, '');
@@ -55,6 +55,9 @@ export const checkoutPage = {
     const lines = products.map((p) => ({ p, qty: cart[p.id] }));
     const total = lines.reduce((sum, l) => sum + l.p.price_uzs * l.qty, 0);
     this.state = { lines, total, config };
+    const card = !!config.stripe?.enabled;
+    form.method = card ? 'card' : 'receipt';
+    const usd = card ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(lines.reduce((sum, l) => sum + Math.max(1, Math.round((l.p.price_uzs / config.stripe.usdRate) * 100)) * l.qty, 0) / 100) : '';
 
     return html`
       <h1>${t('checkout.title')}</h1>
@@ -67,6 +70,13 @@ export const checkoutPage = {
           <label class="field"><span>${t('checkout.comment')}</span><textarea name="comment" rows="2" maxlength="500"></textarea></label>
 
           <h2>${t('checkout.payment')}</h2>
+          ${card ? html`
+            <div class="pay-methods" role="radiogroup" aria-label="${t('checkout.pay_method')}">
+              <label class="pay-method"><input type="radio" name="pay" value="card" data-change="pay-method" checked><span>${t('checkout.method_card')}</span></label>
+              <label class="pay-method"><input type="radio" name="pay" value="receipt" data-change="pay-method"><span>${t('checkout.method_transfer')}</span></label>
+            </div>
+            <p id="pay-card-info" class="muted small">${t('checkout.card_hint', { usd, rate: fmtNumber(config.stripe.usdRate) })}</p>` : ''}
+          <div id="pay-receipt" ${card ? 'hidden' : ''}>
           ${paymentBlock(config, total)}
 
           <div class="field">
@@ -79,9 +89,10 @@ export const checkoutPage = {
             <small class="muted">${t('checkout.receipt_hint', { mb: config.receiptMaxMb })}</small>
             <img id="file-preview" class="file-preview" alt="" hidden>
           </div>
+          </div>
 
           <p id="form-error" class="form-error" role="alert" hidden></p>
-          <button type="submit" id="submit-btn" class="btn btn-primary">${t('checkout.submit')}</button>
+          <button type="submit" id="submit-btn" class="btn btn-primary">${card ? t('checkout.pay_card') : t('checkout.submit')}</button>
         </form>
 
         <aside class="card checkout-summary">
@@ -141,8 +152,9 @@ async function submit(root, formEl) {
   const phone = normalizePhone(data.get('phone'));
   if (name.length < 2) return showError(root, t('err.invalid_name'));
   if (!phone) return showError(root, t('err.invalid_phone'));
-  if (form.fileError) return showError(root, form.fileError);
-  if (!form.file) return showError(root, t('err.receipt_required'));
+  const card = form.method === 'card';
+  if (!card && form.fileError) return showError(root, form.fileError);
+  if (!card && !form.file) return showError(root, t('err.receipt_required'));
   showError(root, '');
 
   const { lines } = checkoutPage.state;
@@ -153,13 +165,19 @@ async function submit(root, formEl) {
   body.set('comment', String(data.get('comment') ?? ''));
   body.set('lang', document.documentElement.lang === 'uz' ? 'uz' : 'ru');
   body.set('items', JSON.stringify(lines.map(({ p, qty }) => ({ id: p.id, qty }))));
-  body.set('receipt', form.file, form.file.name);
+  if (card) body.set('payment_method', 'stripe');
+  else body.set('receipt', form.file, form.file.name);
 
   const btn = $('#submit-btn', root);
   btn.disabled = true;
-  btn.textContent = t('checkout.sending');
+  btn.textContent = card ? t('checkout.redirecting') : t('checkout.sending');
   try {
     const order = await createOrder(body);
+    if (card) {
+      // корзина очистится на странице «Оплата прошла»: если покупатель вернётся без оплаты, товары останутся
+      window.location.assign(order.checkout_url);
+      return undefined;
+    }
     clearCart();
     $('#checkout-root', root).outerHTML = successView({ ...order, phone }).toString();
   } catch (err) {
@@ -167,10 +185,19 @@ async function submit(root, formEl) {
     const known = t(key) !== key;
     showError(root, known ? t(key, { product: err.details?.product ?? '' }) : t('err.generic'));
     btn.disabled = false;
-    btn.textContent = t('checkout.submit');
+    btn.textContent = card ? t('checkout.pay_card') : t('checkout.submit');
   }
   return undefined;
 }
+
+actions['pay-method'] = (el) => {
+  form.method = el.value === 'receipt' ? 'receipt' : 'card';
+  const card = form.method === 'card';
+  $('#pay-receipt').hidden = card;
+  $('#pay-card-info').hidden = !card;
+  $('#submit-btn').textContent = card ? t('checkout.pay_card') : t('checkout.submit');
+  showError(document, '');
+};
 
 actions['receipt-file'] = (el) => {
   const file = el.files?.[0];

@@ -39,6 +39,7 @@ input[type=checkbox] { width: auto; } input[type=file] { padding: 6px; }
 .thumb { width: 64px; height: 48px; object-fit: cover; border-radius: 6px; } .thumb.tall { width: 40px; height: 54px; }
 
 .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--surface-2); color: var(--muted); }
+.badge.pending { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
 .badge.new { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
 .badge.paid, .badge.done, .badge.tg-sent { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
 .badge.shipped { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
@@ -48,7 +49,7 @@ input[type=checkbox] { width: auto; } input[type=file] { padding: 6px; }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: left; font: inherit; color: var(--text); display: grid; gap: 2px; }
 button.stat { cursor: pointer; } button.stat:hover { border-color: var(--accent); }
 .stat b { font-size: 20px; } .stat span { color: var(--muted); font-size: 12px; }
-.stat.new b { color: var(--accent); } .stat.cancelled b { color: var(--err); } .stat.paid b, .stat.done b { color: var(--ok); }
+.stat.pending b { color: var(--warn); } .stat.new b { color: var(--accent); } .stat.cancelled b { color: var(--err); } .stat.paid b, .stat.done b { color: var(--ok); }
 
 .field { display: grid; gap: 5px; margin: 0 0 12px; border: 0; padding: 0; min-width: 0; }
 .field > span, fieldset.field > span { font-size: 12px; font-weight: 700; color: var(--muted); }

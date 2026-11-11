@@ -42,6 +42,18 @@ export const config = {
     chatId: env.TELEGRAM_CHAT_ID || '',
     apiBase: (env.TELEGRAM_API_BASE || 'https://api.telegram.org').replace(/\/$/, ''),
   },
+  stripe: {
+    secretKey: env.STRIPE_SECRET_KEY || '',
+    webhookSecret: env.STRIPE_WEBHOOK_SECRET || '',
+    apiBase: env.STRIPE_API_BASE || '', // только для тестов: подмена api.stripe.com
+    // Сумы Stripe принимает не во всех странах аккаунта, поэтому списываем в долларах по курсу USD_RATE
+    currency: 'usd',
+    usdRate: Number(env.USD_RATE || 12500),
+    // адрес сайта для возврата из Stripe; если не задан — берётся из запроса
+    publicUrl: (env.PUBLIC_URL || '').replace(/\/$/, ''),
+    // сколько держим резерв товара за неоплаченной сессией (Stripe допускает 30 мин – 24 ч)
+    sessionMinutes: 30,
+  },
   payment: {
     card: env.PAYMENT_CARD || '',
     holder: env.PAYMENT_HOLDER || '',

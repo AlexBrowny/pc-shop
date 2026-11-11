@@ -44,3 +44,6 @@ export async function createOrder(formData) {
 }
 
 export const getPresets = async () => (await request('/api/presets')).data;
+
+/** Результат оплаты картой после возврата из Stripe (сервер сам сверяется со Stripe). */
+export const getStripeSession = async (sessionId) => (await request(`/api/stripe/session/${encodeURIComponent(sessionId)}`)).data;

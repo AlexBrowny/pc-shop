@@ -19,6 +19,7 @@ import { productPage } from './pages/product.js';
 import { builderPage } from './pages/builder.js';
 import { cartPage } from './pages/cart.js';
 import { checkoutPage } from './pages/checkout.js';
+import { paidPage } from './pages/paid.js';
 
 const ROUTES = [
   { re: /^\/$/, page: homePage, nav: 'home' },
@@ -27,6 +28,7 @@ const ROUTES = [
   { re: /^\/builder$/, page: builderPage, nav: 'builder' },
   { re: /^\/cart$/, page: cartPage, nav: 'cart' },
   { re: /^\/checkout$/, page: checkoutPage, nav: 'cart' },
+  { re: /^\/paid\/cs_(test|live)_[A-Za-z0-9]+$/, page: paidPage, nav: 'cart' },
 ];
 
 const NAV = [
