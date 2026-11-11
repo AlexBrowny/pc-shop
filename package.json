@@ -1,0 +1,35 @@
+{
+  "name": "pc-market",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Интернет-магазин комплектующих для ПК: каталог, конструктор с проверкой совместимости, расчёт FPS (RU/UZ, UZS)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "build": "node scripts/build.js",
+    "migrate": "node server/migrate.js",
+    "seed": "node server/seed.js",
+    "seed:reset": "node server/seed.js --reset",
+    "images": "node scripts/gen-images.js",
+    "telegram:chat-id": "node scripts/telegram-chat-id.js",
+    "test": "node --test \"tests/*.test.js\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1164.0",
+    "@aws-sdk/s3-presigned-post": "^3.1164.0",
+    "@aws-sdk/s3-request-presigner": "^3.1164.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource-variable/unbounded": "^5.3.0",
+    "@neon/config": "^1.13.0",
+    "@neon/env": "^2.1.0",
+    "express": "^4.21.2",
+    "files-sdk": "^3.1.2",
+    "multer": "^2.5.0",
+    "pg": "^8.23.1",
+    "three": "^0.187.0"
+  }
+}

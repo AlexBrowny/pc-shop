@@ -1,0 +1,46 @@
+async function request(url, options) {
+  const res = await fetch(url, options);
+  let body = null;
+  try { body = await res.json(); } catch { /* пустой ответ */ }
+  if (!res.ok || !body?.success) throw new Error(body?.error ?? `HTTP ${res.status}`);
+  return body;
+}
+
+const qs = (params) => {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== '') sp.set(k, v);
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : '';
+};
+
+const post = (url, data) =>
+  request(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+
+let categoriesCache;
+export const getCategories = async () => (categoriesCache ??= (await request('/api/categories')).data);
+export const getProducts = async (params = {}) => (await request(`/api/products${qs(params)}`)).data;
+export const getProduct = async (slug) => (await request(`/api/products/${encodeURIComponent(slug)}`)).data;
+export const getBrands = async (category) => (await request(`/api/brands${qs({ category })}`)).data;
+export const getGames = async () => (await request('/api/games')).data;
+export const getOptions = async (category, selection) => (await post('/api/builder/options', { category, selection })).data;
+export const evaluateBuild = async (selection, resolution) => (await post('/api/builder/evaluate', { selection, resolution })).data;
+
+export const getConfig = async () => (await request('/api/config')).data;
+
+/** Заказ уходит как multipart (чек — файл). Ошибка содержит код сервера для локализации. */
+export async function createOrder(formData) {
+  const res = await fetch('/api/orders', { method: 'POST', body: formData });
+  let body = null;
+  try { body = await res.json(); } catch { /* пусто */ }
+  if (!res.ok || !body?.success) {
+    const err = new Error(body?.error ?? `HTTP ${res.status}`);
+    err.code = body?.error ?? 'generic';
+    err.details = body ?? {};
+    throw err;
+  }
+  return body.data;
+}
+
+export const getPresets = async () => (await request('/api/presets')).data;

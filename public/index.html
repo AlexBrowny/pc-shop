@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PC Market — комплектующие для ПК · PC konstruktori</title>
+  <meta name="description" content="Интернет-магазин комплектующих для ПК с 3D-конструктором и расчётом FPS. Цены в сумах.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ffb02e'/%3E%3Cstop offset='1' stop-color='%23ff6a1f'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='40' height='40' rx='11' fill='url(%23g)'/%3E%3Crect x='12' y='12' width='16' height='16' rx='3.5' fill='%231b0f05'/%3E%3C/svg%3E">
+  <script>
+    // Применяем тему до отрисовки, чтобы не было вспышки
+    try {
+      var s = localStorage.getItem('pcm_theme');
+      s = s ? JSON.parse(s) : null;
+      var light = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches;
+      document.documentElement.dataset.theme = s === 'light' || s === 'dark' ? s : (light ? 'light' : 'dark');
+    } catch (e) {}
+  </script>
+  <script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
+  <link rel="stylesheet" href="/vendor/fonts/manrope/index.css">
+  <link rel="stylesheet" href="/vendor/fonts/unbounded/index.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
+  <div class="shell">
+    <aside id="sidebar" class="sidebar" aria-label="Navigation"></aside>
+    <div class="shell-main">
+      <header id="header" class="topbar"></header>
+      <main id="app" class="content"></main>
+      <footer id="footer" class="site-footer"></footer>
+    </div>
+  </div>
+  <div id="scrim" class="scrim"></div>
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
