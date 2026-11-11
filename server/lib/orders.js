@@ -72,7 +72,7 @@ export async function priceItems(items) {
  * Создаёт заказ и списывает остатки одной транзакцией.
  * Строки товаров блокируются (FOR UPDATE), поэтому два одновременных заказа не уведут остаток в минус.
  */
-export function createOrder({ customer, lines, receipt = null, payment = 'receipt' }) {
+export function createOrder({ customer, lines, receipt = null, payment = 'receipt', userId = null }) {
   const stripe = payment === 'stripe';
   return tx(async (db) => {
     const ids = lines.map((l) => l.product.id).sort((a, b) => a - b);
@@ -85,11 +85,11 @@ export function createOrder({ customer, lines, receipt = null, payment = 'receip
     const total = lines.reduce((sum, l) => sum + l.product.price_uzs * l.qty, 0);
     const order = await db.row(
       `INSERT INTO orders (customer_name, phone, address, comment, lang, total_uzs, receipt_file, receipt_mime, receipt_name,
-                           status, payment_method, payment_status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+                           status, payment_method, payment_status, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
       [customer.name, customer.phone, customer.address, customer.comment, customer.lang, total,
         receipt?.file ?? null, receipt?.mime ?? null, receipt?.name ?? null,
-        stripe ? 'pending' : 'new', payment, stripe ? 'awaiting' : 'manual'],
+        stripe ? 'pending' : 'new', payment, stripe ? 'awaiting' : 'manual', userId],
     );
     for (const { product, qty } of lines) {
       await db.query('INSERT INTO order_items (order_id, product_id, brand, name, price_uzs, qty) VALUES ($1, $2, $3, $4, $5, $6)',

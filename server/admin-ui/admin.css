@@ -82,3 +82,10 @@ ul.form-error { padding-left: 12px; }
   .grid2, .two-col, .order-grid { grid-template-columns: 1fr; } .span2 { grid-column: auto; } .four { grid-template-columns: 1fr 1fr; }
   .topbar-in { flex-wrap: wrap; gap: 8px; } .toolbar .btn.primary { margin-left: 0; }
 }
+
+.gallery-admin { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin: 10px 0; }
+.gallery-grid figure { margin: 0; display: grid; gap: 6px; }
+.gallery-grid img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; background: var(--surface-2); }
+.stars-admin { color: var(--warn); letter-spacing: 1px; white-space: nowrap; }
+.review-body { max-width: 420px; white-space: pre-wrap; overflow-wrap: anywhere; }

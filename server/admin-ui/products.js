@@ -40,6 +40,45 @@ function readSpecs(formEl, fields) {
   return specs;
 }
 
+const MAX_GALLERY = 8;
+
+/** Дополнительные фото товара: загрузка нескольких файлов и удаление. Главное фото меняется в форме выше. */
+async function galleryBlock(el, product) {
+  const draw = async (keepError = '') => {
+    const images = await api(`/products/${product.id}/images`);
+    el.innerHTML = html`
+      <h3>Галерея фото <small class="muted">(до ${MAX_GALLERY}; главное фото — в форме выше)</small></h3>
+      <div class="gallery-grid">
+        ${images.map((img) => html`<figure><img src="${img.url}" alt="" loading="lazy"><button type="button" class="btn small danger" data-del="${img.id}">Удалить</button></figure>`)}
+        ${images.length ? '' : html`<p class="muted small">Дополнительных фото пока нет.</p>`}
+      </div>
+      ${images.length < MAX_GALLERY ? html`<label class="field"><span>Добавить фото (PNG, JPG, WEBP; можно выбрать несколько)</span><input type="file" id="g-files" accept="image/png,image/jpeg,image/webp" multiple></label>` : ''}
+      <p id="g-error" class="form-error" ${keepError ? '' : 'hidden'}>${keepError}</p>`.toString();
+
+    $('#g-files', el)?.addEventListener('change', async (e) => {
+      const files = [...e.target.files].slice(0, MAX_GALLERY - images.length);
+      let problem = '';
+      for (const file of files) {
+        const form = new FormData();
+        form.set('image', file);
+        try {
+          await api(`/products/${product.id}/images`, { method: 'POST', form });
+        } catch (err) {
+          problem = `${file.name}: ${err instanceof ApiError ? errorText(err.code) : 'ошибка соединения'}`;
+          break;
+        }
+      }
+      await draw(problem);
+    });
+    $$('[data-del]', el).forEach((btn) => btn.addEventListener('click', async () => {
+      if (!confirm('Удалить это фото?')) return;
+      await api(`/products/${product.id}/images/${btn.dataset.del}`, { method: 'DELETE' });
+      draw();
+    }));
+  };
+  await draw();
+}
+
 export async function productsView(main) {
   const schema = await api('/spec-schema');
   const state = { category: '', q: '' };
@@ -86,8 +125,9 @@ export async function productsView(main) {
 
   function openForm(product) {
     const isNew = !product;
-    const modal = openModal(isNew ? 'Новый товар' : `Изменить: ${product.name}`, html`<form id="p-form" class="form" novalidate></form>`, { wide: true });
+    const modal = openModal(isNew ? 'Новый товар' : `Изменить: ${product.name}`, html`<form id="p-form" class="form" novalidate></form>${isNew ? '' : html`<section id="gallery" class="gallery-admin"></section>`}`, { wide: true });
     const formEl = $('#p-form', modal.el);
+    if (!isNew) galleryBlock($('#gallery', modal.el), product);
 
     const draw = (category, specValues) => {
       const fields = schema[category];

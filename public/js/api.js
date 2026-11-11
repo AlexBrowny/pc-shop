@@ -47,3 +47,41 @@ export const getPresets = async () => (await request('/api/presets')).data;
 
 /** Результат оплаты картой после возврата из Stripe (сервер сам сверяется со Stripe). */
 export const getStripeSession = async (sessionId) => (await request(`/api/stripe/session/${encodeURIComponent(sessionId)}`)).data;
+
+// ───────── Аккаунт, отзывы, фильтры ─────────
+export class ApiError extends Error {
+  constructor(code, details = {}) {
+    super(code);
+    this.code = code;
+    this.details = details;
+  }
+}
+
+/** Запрос с JSON-телом и защитным заголовком (сервер требует его для изменяющих запросов покупателя). */
+async function call(url, method, data) {
+  const res = await fetch(url, {
+    method,
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'pcm' },
+    body: data === undefined ? undefined : JSON.stringify(data),
+  });
+  let body = null;
+  try { body = await res.json(); } catch { /* пустой ответ */ }
+  if (!res.ok || !body?.success) throw new ApiError(body?.error ?? `http_${res.status}`, body ?? {});
+  return body.data;
+}
+
+export const getFilters = async (category) => (await request(`/api/filters${qs({ category })}`)).data;
+
+export const getMe = () => call('/api/account/me', 'GET');
+export const registerUser = (data) => call('/api/account/register', 'POST', data);
+export const loginUser = (data) => call('/api/account/login', 'POST', data);
+export const logoutUser = () => call('/api/account/logout', 'POST', {});
+export const getMyOrders = () => call('/api/account/orders', 'GET');
+export const getMyBuilds = () => call('/api/account/builds', 'GET');
+export const saveMyBuild = (name, ids) => call('/api/account/builds', 'POST', { name, ids });
+export const deleteMyBuild = (id) => call(`/api/account/builds/${id}`, 'DELETE');
+
+export const getReviews = (slug) => call(`/api/products/${encodeURIComponent(slug)}/reviews`, 'GET');
+export const saveReview = (slug, rating, body) => call(`/api/products/${encodeURIComponent(slug)}/reviews`, 'POST', { rating, body });
+export const deleteReview = (slug) => call(`/api/products/${encodeURIComponent(slug)}/reviews`, 'DELETE');

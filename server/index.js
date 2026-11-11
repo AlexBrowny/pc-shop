@@ -1,6 +1,6 @@
 import { config, assertConfig } from './config.js';
 import { migrate } from './migrate.js';
-import { seedIfEmpty } from './seed.js';
+import { seedIfEmpty, syncBuiltinGames } from './seed.js';
 import { createApp } from './app.js';
 import { ensureAdminPassword } from './lib/auth.js';
 import { isTelegramConfigured } from './lib/telegram.js';
@@ -12,6 +12,8 @@ try {
   const applied = await migrate();
   if (applied.length) out(`Миграции применены: ${applied.join(', ')}`);
   const seed = await seedIfEmpty();
+  const newGames = await syncBuiltinGames();
+  if (newGames) out(`Добавлено новых игр в базу FPS: ${newGames}`);
   if (seed.seeded) out('База пуста — загружены каталог, игры и иллюстрации в Neon.');
   const generated = await ensureAdminPassword();
   const app = createApp();

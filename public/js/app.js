@@ -5,8 +5,9 @@ import {
 import { actions, parseHash, go } from './router.js';
 import {
   subscribe, cartCount, getCart, addToCart, setQty, clearCart, setPart, addStorage, resetBuild, getTheme, applyTheme,
+  getUser, setUser, getCompare, toggleCompare, clearCompare,
 } from './store.js';
-import { getCategories } from './api.js';
+import { getCategories, getMe } from './api.js';
 import { errorState, loading } from './components.js';
 import { icons, logoMark, catIcon } from './icons.js';
 import {
@@ -20,6 +21,9 @@ import { builderPage } from './pages/builder.js';
 import { cartPage } from './pages/cart.js';
 import { checkoutPage } from './pages/checkout.js';
 import { paidPage } from './pages/paid.js';
+import { authPage } from './pages/auth.js';
+import { accountPage } from './pages/account.js';
+import { comparePage } from './pages/compare.js';
 
 const ROUTES = [
   { re: /^\/$/, page: homePage, nav: 'home' },
@@ -29,6 +33,9 @@ const ROUTES = [
   { re: /^\/cart$/, page: cartPage, nav: 'cart' },
   { re: /^\/checkout$/, page: checkoutPage, nav: 'cart' },
   { re: /^\/paid\/cs_(test|live)_[A-Za-z0-9]+$/, page: paidPage, nav: 'cart' },
+  { re: /^\/login$/, page: authPage, nav: 'account' },
+  { re: /^\/account$/, page: accountPage, nav: 'account' },
+  { re: /^\/compare$/, page: comparePage, nav: 'compare' },
 ];
 
 const NAV = [
@@ -88,6 +95,7 @@ function renderHeader() {
         ${LANGS.map((l) => html`<button data-action="lang" data-lang="${l}" class="${getLang() === l ? 'active' : ''}">${l.toUpperCase()}</button>`)}
       </div>
       <button class="icon-btn" data-action="theme" title="${label}" aria-label="${label}">${theme === 'dark' ? icons.sun : icons.moon}</button>
+      <a class="icon-btn ${activeNav === 'account' ? 'active' : ''}" href="${getUser() ? '#/account' : '#/login'}" title="${getUser() ? getUser().name : t('nav.login')}" aria-label="${getUser() ? t('nav.account') : t('nav.login')}">${icons.user}</a>
       <a class="cart-link ${activeNav === 'cart' ? 'active' : ''}" href="#/cart" aria-label="${t('nav.cart')}">${icons.cart}<span id="cart-count" class="badge">${cartCount()}</span></a>
       <a class="btn btn-primary top-cta" href="#/builder">${t('nav.start')} ${icons.arrow}</a>
     </div>`.toString();
@@ -112,6 +120,7 @@ async function route() {
   closeDrawer();
   renderSidebar();
   renderHeader();
+  renderCompareBar();
   appEl.innerHTML = loading().toString();
   try {
     const content = await match.page.render();
@@ -144,6 +153,18 @@ actions.qty = (el) => {
   if (parseHash().path === '/cart') route();
 };
 actions['cart-clear'] = () => { clearCart(); route(); };
+actions['compare-toggle'] = (el, e) => {
+  e.preventDefault();
+  const result = toggleCompare(Number(el.dataset.id), el.dataset.category);
+  if (result === 'full') toast(t('compare.max'));
+  if (result === 'reset') toast(t('compare.same_cat'));
+  syncCompareButtons();
+};
+actions['compare-remove'] = (el) => {
+  toggleCompare(Number(el.dataset.id), '');
+  route();
+};
+actions['compare-clear'] = () => { clearCompare(); if (parseHash().path === '/compare') route(); };
 actions['to-builder'] = (el) => {
   const id = Number(el.dataset.id);
   if (el.dataset.category === 'storage') addStorage(id);
@@ -153,7 +174,42 @@ actions['to-builder'] = (el) => {
 };
 $('#scrim').addEventListener('click', closeDrawer);
 
+// Кнопки «Сравнить» на карточках и плавающая панель сравнения
+function syncCompareButtons() {
+  const ids = new Set(getCompare().map((c) => c.id));
+  document.querySelectorAll('[data-action="compare-toggle"]').forEach((btn) => {
+    const on = ids.has(Number(btn.dataset.id));
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', String(on));
+    const label = btn.querySelector('span');
+    if (label) label.textContent = on ? t('compare.in') : t('compare.add');
+  });
+  renderCompareBar();
+}
+
+function renderCompareBar() {
+  let bar = $('#compare-bar');
+  const list = getCompare();
+  if (!list.length || parseHash().path === '/compare') { bar?.remove(); return; }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'compare-bar';
+    bar.className = 'compare-bar';
+    document.body.append(bar);
+  }
+  bar.innerHTML = html`
+    ${icons.compare}<span>${t('nav.compare')}: <b>${list.length}</b></span>
+    <a class="btn btn-primary btn-sm" href="#/compare">${t('compare.bar', { n: list.length })}</a>
+    <button class="btn btn-ghost btn-sm" data-action="compare-clear" aria-label="${t('compare.clear')}">${icons.close}</button>`.toString();
+}
+
+let lastUserId = null;
 subscribe(() => {
+  if ((getUser()?.id ?? null) !== lastUserId) {
+    lastUserId = getUser()?.id ?? null;
+    renderHeader();
+  }
+  renderCompareBar();
   const badge = $('#cart-count');
   const count = cartCount();
   if (badge) {
@@ -168,4 +224,5 @@ window.addEventListener('hashchange', route);
 initMotion();
 initSearchHotkeys();
 getCategories().then((c) => { categories = c; renderSidebar(); }).catch(() => {});
-route();
+// сначала узнаём, вошёл ли покупатель (для шапки и кабинета), затем рисуем страницу
+getMe().catch(() => null).then((user) => { setUser(user); route(); });

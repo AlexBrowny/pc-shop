@@ -114,7 +114,7 @@ test('данные лежат в Postgres Neon: каталог, игры, jsonb-
   assert.equal(typeof gpus[0].price_uzs, 'number');
   assert.equal(typeof gpus[0].specs.vram_gb, 'number');
   assert.ok(gpus[0].price_uzs >= gpus[1].price_uzs);
-  assert.equal((await (await fetch(`${base}/api/games`)).json()).data.length, 20);
+  assert.ok((await (await fetch(`${base}/api/games`)).json()).data.length >= 50);
   const found = (await (await fetch(`${base}/api/products?q=ryzen%207`)).json()).data;
   assert.ok(found.length >= 2, 'регистронезависимый поиск ILIKE');
   const { rows: [v] } = await pool.query('SELECT version() AS v, current_schema() AS s');
@@ -345,7 +345,7 @@ test('новая игра попадает в расчёт FPS', async () => {
   assert.deepEqual(game.gpu_fps, [100, 80, 60, 40]);
   assert.ok(await storage.objectExists(storage.MEDIA, 'games/test-game-2077.svg'));
   const games = (await (await fetch(`${base}/api/games`)).json()).data;
-  assert.equal(games.length, 21);
+  assert.equal(games.length, (await import('../data/games.js')).GAMES.length + 1);
 
   const cpu = await product('Ryzen 7 7800X3D');
   const gpu = await product('GeForce RTX 4070 SUPER 12GB');

@@ -9,6 +9,8 @@ import { ordersRouter } from './routes/orders.js';
 import { adminRouter } from './routes/admin.js';
 import { presetsRouter } from './routes/presets.js';
 import { stripeWebhook, stripeRouter } from './routes/stripe.js';
+import { accountRouter } from './routes/account.js';
+import { reviewsRouter } from './routes/reviews.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const adminUiDir = path.join(here, 'admin-ui');
@@ -43,6 +45,8 @@ export function createApp() {
     res.setHeader('Cache-Control', 'no-store');
     next();
   }, adminRouter);
+  app.use('/api/account', accountRouter);
+  app.use('/api', reviewsRouter);
   app.use('/api', catalogRouter);
   app.use('/api/builder', builderRouter);
   app.use('/api', ordersRouter);

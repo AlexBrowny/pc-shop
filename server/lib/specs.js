@@ -78,6 +78,21 @@ export const SPEC_FIELDS = {
 
 export const CATEGORY_KEYS = Object.keys(SPEC_FIELDS);
 
+/**
+ * Характеристики, по которым можно фильтровать каталог (по категориям). Варианты значений берутся из реальных данных,
+ * поэтому список всегда соответствует тому, что есть в магазине.
+ */
+export const FILTER_SPECS = {
+  cpu: ['socket', 'cores', 'ram_types', 'igpu'],
+  motherboard: ['socket', 'chipset', 'form_factor', 'ram_type', 'wifi'],
+  ram: ['ram_type', 'capacity_gb', 'speed_mhz'],
+  gpu: ['vram_gb', 'chip'],
+  storage: ['storage_type', 'interface', 'capacity_gb'],
+  psu: ['wattage_w', 'efficiency', 'form_factor', 'modular'],
+  case: ['form_factors', 'color'],
+  cooler: ['cooler_type', 'sockets'],
+};
+
 function validateField(field, raw) {
   const empty = raw === undefined || raw === null || raw === '';
   if (empty) {

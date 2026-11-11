@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { getSetting } from '../lib/settings.js';
 import { rateLimiter } from '../lib/ratelimit.js';
+import { loadUser } from '../lib/customers.js';
 import {
   receiptUpload, handleUpload, detectMime, saveReceipt, deleteReceipt,
 } from '../lib/uploads.js';
@@ -51,7 +52,7 @@ async function createStripeOrder(req, res, customer, items) {
   const priced = await priceItems(items);
   if (priced.error) return fail(res, priced.error === 'out_of_stock' ? 409 : 400, priced.error, { product: priced.product, available: priced.available });
 
-  const created = await createOrder({ customer, lines: priced.lines, payment: 'stripe' });
+  const created = await createOrder({ customer, lines: priced.lines, payment: 'stripe', userId: req.user?.id ?? null });
   if (created.error) return fail(res, 409, created.error, { product: created.product });
 
   const { order, items: saved } = await getOrder(created.id);
@@ -69,7 +70,7 @@ async function createStripeOrder(req, res, customer, items) {
   }
 }
 
-ordersRouter.post('/orders', limiter, handleUpload(receiptUpload), async (req, res, next) => {
+ordersRouter.post('/orders', limiter, loadUser, handleUpload(receiptUpload), async (req, res, next) => {
   try {
     const customer = validateCustomer(req.body ?? {});
     if (customer.error) return fail(res, 400, customer.error, { field: customer.field });
@@ -94,6 +95,7 @@ ordersRouter.post('/orders', limiter, handleUpload(receiptUpload), async (req, r
         customer: customer.value,
         lines: priced.lines,
         receipt: { file, mime, name: String(req.file.originalname ?? '').slice(0, 120) },
+        userId: req.user?.id ?? null,
       });
     } catch (err) {
       await deleteReceipt(file).catch(() => {});

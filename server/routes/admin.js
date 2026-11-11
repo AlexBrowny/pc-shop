@@ -234,6 +234,57 @@ adminRouter.delete('/products/:id', wrap(async (req, res) => {
   return r.rowCount ? ok(res, {}) : fail(res, 404, 'not_found');
 }));
 
+// ───────── Галерея фото товара ─────────
+const MAX_GALLERY = 8;
+
+adminRouter.get('/products/:id/images', wrap(async (req, res) => {
+  ok(res, await rows('SELECT id, url FROM product_images WHERE product_id = $1 ORDER BY sort, id', [Number(req.params.id) || 0]));
+}));
+
+adminRouter.post('/products/:id/images', handleUpload(imageUpload), wrap(async (req, res) => {
+  const id = Number(req.params.id);
+  const product = Number.isInteger(id) ? await row('SELECT id, slug FROM products WHERE id = $1', [id]) : null;
+  if (!product) return fail(res, 404, 'not_found');
+  if (!req.file) return fail(res, 400, 'image_required', { fields: { image: 'required' } });
+  const mime = detectMime(req.file.buffer);
+  if (!mime || !isImageMime(mime)) return fail(res, 400, 'image_invalid_type', { fields: { image: 'image_invalid_type' } });
+  if ((await row('SELECT COUNT(*) AS n FROM product_images WHERE product_id = $1', [id])).n >= MAX_GALLERY) return fail(res, 409, 'too_many_images');
+  const url = await saveImage(req.file.buffer, mime, 'products', `${product.slug}-gallery`);
+  const created = await row(
+    'INSERT INTO product_images (product_id, url, sort) VALUES ($1, $2, COALESCE((SELECT MAX(sort) + 1 FROM product_images WHERE product_id = $1), 0)) RETURNING id, url',
+    [id, url],
+  );
+  return ok(res, created, 201);
+}));
+
+adminRouter.delete('/products/:id/images/:imageId', wrap(async (req, res) => {
+  const removed = await query('DELETE FROM product_images WHERE id = $1 AND product_id = $2', [Number(req.params.imageId) || 0, Number(req.params.id) || 0]);
+  return removed.rowCount ? ok(res, {}) : fail(res, 404, 'not_found');
+}));
+
+// ───────── Отзывы: модерация ─────────
+adminRouter.get('/reviews', wrap(async (req, res) => {
+  const status = ['published', 'hidden'].includes(req.query.status) ? req.query.status : null;
+  ok(res, await rows(
+    `SELECT r.id, r.rating, r.body, r.status, r.created_at, p.brand, p.name AS product, p.slug, u.name AS author, u.email
+     FROM reviews r JOIN products p ON p.id = r.product_id JOIN users u ON u.id = r.user_id
+     ${status ? 'WHERE r.status = $1' : ''} ORDER BY r.created_at DESC LIMIT 300`,
+    status ? [status] : [],
+  ));
+}));
+
+adminRouter.patch('/reviews/:id', wrap(async (req, res) => {
+  const status = req.body?.status;
+  if (!['published', 'hidden'].includes(status)) return fail(res, 400, 'invalid_status');
+  const updated = await query('UPDATE reviews SET status = $1, updated_at = now() WHERE id = $2', [status, Number(req.params.id) || 0]);
+  return updated.rowCount ? ok(res, {}) : fail(res, 404, 'not_found');
+}));
+
+adminRouter.delete('/reviews/:id', wrap(async (req, res) => {
+  const removed = await query('DELETE FROM reviews WHERE id = $1', [Number(req.params.id) || 0]);
+  return removed.rowCount ? ok(res, {}) : fail(res, 404, 'not_found');
+}));
+
 // ───────── Игры ─────────
 const gameBody = (req) => {
   const body = { ...(req.body ?? {}) };

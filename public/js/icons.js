@@ -38,6 +38,11 @@ export const icons = {
   alert: svg('<path d="M12 4 3 19.5h18Z"/><path d="M12 10v4.2M12 16.8v.2"/>'),
   close: svg('<path d="m6 6 12 12M18 6 6 18"/>'),
   trash: svg('<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l.8 12.5h9.4L17.5 7M10 11v5M14 11v5"/>'),
+  user: svg('<circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c.8-4 3.7-6 7.5-6s6.7 2 7.5 6"/>'),
+  compare: svg('<path d="M8 4v16M16 4v16M4 8h8M12 16h8"/>'),
+  heart: svg('<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.3 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10Z"/>'),
+  share: svg('<circle cx="6" cy="12" r="2.2"/><circle cx="17.5" cy="6" r="2.2"/><circle cx="17.5" cy="18" r="2.2"/><path d="m8 11 7.5-4M8 13l7.5 4"/>'),
+  save: svg('<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/>'),
 };
 
 const CAT_ICONS = {

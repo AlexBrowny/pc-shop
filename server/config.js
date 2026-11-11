@@ -61,7 +61,7 @@ export const config = {
   limits: {
     // на Vercel тело запроса функции ограничено 4,5 МБ
     receiptBytes: (process.env.VERCEL ? 4 : 10) * 1024 * 1024,
-    imageBytes: 5 * 1024 * 1024,
+    imageBytes: (process.env.VERCEL ? 4 : 5) * 1024 * 1024,
     ordersPerHour: Number(env.ORDERS_PER_HOUR || 10),
     loginAttempts: Number(env.LOGIN_ATTEMPTS || 5),
   },

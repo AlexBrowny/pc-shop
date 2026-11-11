@@ -2,8 +2,8 @@ import { html, $, toast } from '../util.js';
 import {
   t, fmtPrice, keySpecs, issueText,
 } from '../i18n.js';
-import { getOptions, evaluateBuild } from '../api.js';
-import { actions, go } from '../router.js';
+import { getOptions, evaluateBuild, saveMyBuild } from '../api.js';
+import { actions, go, parseHash } from '../router.js';
 import { icons, catIcon } from '../icons.js';
 import { animateNumber } from '../motion.js';
 import {
@@ -11,6 +11,7 @@ import {
 } from './builder-viewer.js';
 import {
   getBuild, setPart, addStorage, removeStorage, resetBuild, buildIds, addManyToCart,
+  loadBuild, decodeBuild, shareUrl, getUser,
 } from '../store.js';
 
 // Порядок в списке: как собирают руками — от корпуса к блоку питания
@@ -142,6 +143,8 @@ function partsHtml(ev) {
         <div class="total-line"><span class="muted">${t('common.total')}</span><strong>${fmtPrice(ev.total)}</strong></div>
         <div class="parts-actions">
           <button class="btn btn-ghost" data-action="b-reset" ${hasParts ? '' : 'disabled'}>${icons.trash} ${t('builder.reset')}</button>
+          <button class="btn btn-ghost" data-action="b-share" ${hasParts ? '' : 'disabled'}>${icons.share} ${t('bld.share')}</button>
+          <button class="btn btn-ghost" data-action="b-save" ${hasParts ? '' : 'disabled'}>${icons.save} ${t('bld.save')}</button>
           <button class="btn" data-action="b-add-all" ${hasParts ? '' : 'disabled'}>${icons.cart} ${t('builder.add_all')}</button>
           <button class="btn btn-primary" data-action="b-checkout" ${hasParts ? '' : 'disabled'}>${t('bld.checkout')} ${icons.arrow}</button>
         </div>
@@ -363,6 +366,13 @@ export const builderPage = {
     ui.root = $('#builder', root);
     ui.picker = null;
     ui.prevTotal = 0;
+    // сборка по ссылке «Поделиться»: #/builder?b=cpu.12~gpu.44…
+    const shared = decodeBuild(parseHash().params.get('b'));
+    if (shared) {
+      loadBuild(shared);
+      history.replaceState(null, '', '#/builder');
+      toast(t('bld.shared_loaded'));
+    }
     refresh();
   },
   unmount() {
@@ -390,6 +400,30 @@ actions['b-select'] = (el) => {
 actions['b-clear'] = (el) => { setPart(el.dataset.slot, null); refresh(); };
 actions['b-remove-drive'] = (el) => { removeStorage(Number(el.dataset.index)); refresh(); };
 actions['b-reset'] = () => { resetBuild(); ui.prevTotal = 0; refresh(); };
+actions['b-share'] = async () => {
+  try {
+    await navigator.clipboard.writeText(shareUrl(getBuild()));
+    toast(t('bld.link_copied'));
+  } catch {
+    window.prompt(t('bld.share'), shareUrl(getBuild()));
+  }
+};
+actions['b-save'] = async () => {
+  if (!getUser()) {
+    toast(t('bld.login_to_save'));
+    go('/login?next=/builder');
+    return;
+  }
+  const name = window.prompt(t('bld.save_name'), `${t('bld.title')} ${new Date().toLocaleDateString()}`)?.trim();
+  if (!name) return;
+  try {
+    await saveMyBuild(name, getBuild());
+    toast(t('bld.saved'));
+  } catch (err) {
+    const key = `err.${err.code}`;
+    toast(t(key) !== key ? t(key) : t('common.error'));
+  }
+};
 actions['b-add-all'] = () => { addManyToCart(buildIds()); toast(t('builder.added')); };
 actions['b-checkout'] = () => { addManyToCart(buildIds()); go('/cart'); };
 actions['b-resolution'] = (el) => { ui.resolution = el.value; refresh(); };

@@ -4,6 +4,7 @@ import {
 import { ordersView } from '/admin/orders.js';
 import { productsView } from '/admin/products.js';
 import { gamesView } from '/admin/games.js';
+import { reviewsView } from '/admin/reviews.js';
 import { settingsView } from '/admin/settings.js';
 
 const root = $('#root');
@@ -11,6 +12,7 @@ const root = $('#root');
 const VIEWS = {
   orders: { title: 'Заказы', view: ordersView },
   products: { title: 'Товары', view: productsView },
+  reviews: { title: 'Отзывы', view: reviewsView },
   games: { title: 'Игры', view: gamesView },
   settings: { title: 'Настройки', view: settingsView },
 };

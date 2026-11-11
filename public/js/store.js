@@ -1,7 +1,7 @@
 // Клиентское состояние: корзина, сборка из конструктора, тема. Хранится в localStorage.
 // Все обновления иммутабельны — состояние заменяется новым объектом.
 
-const KEYS = { cart: 'pcm_cart', build: 'pcm_build', theme: 'pcm_theme' };
+const KEYS = { cart: 'pcm_cart', build: 'pcm_build', theme: 'pcm_theme', compare: 'pcm_compare' };
 const EMPTY_BUILD = Object.freeze({
   cpu: null, motherboard: null, ram: null, gpu: null, storage: [], psu: null, case: null, cooler: null,
 });
@@ -56,6 +56,60 @@ export const removeStorage = (index) => setBuild({ ...build, storage: build.stor
 export const loadBuild = (ids) => setBuild({ ...EMPTY_BUILD, ...ids, storage: [...(ids.storage ?? [])] });
 export const resetBuild = () => setBuild({ ...EMPTY_BUILD, storage: [] });
 export const buildIds = () => [...Object.entries(build).filter(([k, v]) => k !== 'storage' && v).map(([, v]) => v), ...build.storage];
+
+// ───────── Ссылка на сборку: компактная запись состава в адресе ─────────
+const SHARE_SLOTS = ['cpu', 'motherboard', 'ram', 'gpu', 'psu', 'case', 'cooler'];
+
+/** { cpu: 12, gpu: 44, storage: [3, 4] } → «cpu.12~gpu.44~storage.3.4» */
+export function encodeBuild(ids) {
+  const parts = SHARE_SLOTS.filter((s) => ids[s]).map((s) => `${s}.${ids[s]}`);
+  if (ids.storage?.length) parts.push(`storage.${ids.storage.join('.')}`);
+  return parts.join('~');
+}
+
+/** Обратная запись; всё, что не похоже на список id, отбрасывается. */
+export function decodeBuild(text) {
+  const out = { storage: [] };
+  for (const chunk of String(text ?? '').split('~').slice(0, 12)) {
+    const [slot, ...nums] = chunk.split('.');
+    const ids = nums.map(Number).filter((n) => Number.isInteger(n) && n > 0);
+    if (slot === 'storage') out.storage = ids.slice(0, 6);
+    else if (SHARE_SLOTS.includes(slot) && ids.length === 1) out[slot] = ids[0];
+  }
+  return SHARE_SLOTS.some((s) => out[s]) || out.storage.length ? out : null;
+}
+
+export const shareUrl = (ids) => `${location.origin}${location.pathname}#/builder?b=${encodeBuild(ids)}`;
+
+// ───────── Сравнение товаров (до 4 из одной категории) ─────────
+const MAX_COMPARE = 4;
+let compare = read(KEYS.compare, []);
+export const getCompare = () => compare;
+export const inCompare = (id) => compare.some((c) => c.id === id);
+
+/** Добавляет/убирает товар. Возвращает 'added' | 'removed' | 'reset' (начат новый список другой категории) | 'full'. */
+export function toggleCompare(id, category) {
+  if (inCompare(id)) {
+    compare = compare.filter((c) => c.id !== id);
+    write(KEYS.compare, compare);
+    emit();
+    return 'removed';
+  }
+  let result = 'added';
+  let base = compare;
+  if (base.length && base[0].category !== category) { base = []; result = 'reset'; }
+  if (base.length >= MAX_COMPARE) return 'full';
+  compare = [...base, { id, category }];
+  write(KEYS.compare, compare);
+  emit();
+  return result;
+}
+export const clearCompare = () => { compare = []; write(KEYS.compare, compare); emit(); };
+
+// ───────── Текущий покупатель (кэш ответа /api/account/me) ─────────
+let user = null;
+export const getUser = () => user;
+export function setUser(next) { user = next; emit(); }
 
 // ───────── Тема ─────────
 export function getTheme() {

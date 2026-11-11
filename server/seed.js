@@ -31,6 +31,29 @@ export async function uploadIllustrations() {
   return tasks.length;
 }
 
+/**
+ * Добавляет в БД встроенные игры, которых там ещё нет (по slug), и загружает их обложки.
+ * Существующие игры и правки админа не трогает — безопасно вызывать при каждом запуске.
+ */
+export async function syncBuiltinGames() {
+  const existing = new Set((await query('SELECT slug FROM games')).rows.map((r) => r.slug));
+  const missing = GAMES.filter((g) => !existing.has(g.slug));
+  if (!missing.length) return 0;
+  await runBatched(
+    missing.map((g) => () => putObject(MEDIA, `games/${g.slug}.svg`, Buffer.from(gameSvg(g), 'utf8'), 'image/svg+xml', { cacheControl: 'public, max-age=3600' })),
+    UPLOAD_CONCURRENCY,
+  );
+  for (const g of missing) {
+    // eslint-disable-next-line no-await-in-loop
+    await query(
+      `INSERT INTO games (slug, title, year, cover, gpu_fps, cpu_fps, vram, ram_gb, builtin)
+       VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7::jsonb, $8, true) ON CONFLICT (slug) DO NOTHING`,
+      [g.slug, g.title, g.year, `/img/games/${g.slug}.svg`, JSON.stringify(g.gpu_fps), JSON.stringify(g.cpu_fps), JSON.stringify(g.vram), g.ram_gb],
+    );
+  }
+  return missing.length;
+}
+
 export async function seedIfEmpty({ reset = false } = {}) {
   if (reset) await query('TRUNCATE order_items, orders, products, games, categories RESTART IDENTITY CASCADE');
 
@@ -67,6 +90,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   try {
     await migrate();
     const result = await seedIfEmpty({ reset: process.argv.includes('--reset') });
+    const added = await syncBuiltinGames();
+    if (added) process.stdout.write(`Добавлено новых игр: ${added}\n`);
     const counts = {
       products: (await row('SELECT COUNT(*) AS n FROM products')).n,
       games: (await row('SELECT COUNT(*) AS n FROM games')).n,
