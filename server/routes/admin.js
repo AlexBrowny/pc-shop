@@ -13,6 +13,7 @@ import {
   imageUpload, handleUpload, detectMime, isImageMime, saveImage, saveGeneratedSvg, isReceiptKey,
 } from '../lib/uploads.js';
 import { getObject, RECEIPTS } from '../lib/storage.js';
+import { fetchRemoteImage } from '../lib/remote-image.js';
 import { sendOrderToTelegram, sendTestMessage, isTelegramConfigured, telegramToken, telegramChatId } from '../lib/telegram.js';
 import { SPEC_FIELDS, CATEGORY_KEYS, validateSpecs, validateGame } from '../lib/specs.js';
 import { productSvg, gameSvg, slugify } from '../lib/illustrations.js';
@@ -241,20 +242,66 @@ adminRouter.get('/products/:id/images', wrap(async (req, res) => {
   ok(res, await rows('SELECT id, url FROM product_images WHERE product_id = $1 ORDER BY sort, id', [Number(req.params.id) || 0]));
 }));
 
+const productForImage = async (rawId) => {
+  const id = Number(rawId);
+  return Number.isInteger(id) && id > 0 ? row('SELECT id, slug FROM products WHERE id = $1', [id]) : null;
+};
+
+/**
+ * Сохраняет фото товара: as='main' заменяет главное фото (иллюстрацию), as='gallery' добавляет в галерею.
+ * Тип файла определяется по содержимому (SVG и всё, что не PNG/JPEG/WEBP, отклоняется).
+ */
+async function attachPhoto(product, buffer, as) {
+  const mime = detectMime(buffer);
+  if (!mime || !isImageMime(mime)) return { error: 'image_invalid_type', status: 400 };
+  if (as === 'gallery') {
+    if ((await row('SELECT COUNT(*) AS n FROM product_images WHERE product_id = $1', [product.id])).n >= MAX_GALLERY) return { error: 'too_many_images', status: 409 };
+    const url = await saveImage(buffer, mime, 'products', `${product.slug}-gallery`);
+    const image = await row(
+      'INSERT INTO product_images (product_id, url, sort) VALUES ($1, $2, COALESCE((SELECT MAX(sort) + 1 FROM product_images WHERE product_id = $1), 0)) RETURNING id, url',
+      [product.id, url],
+    );
+    return { image };
+  }
+  const url = await saveImage(buffer, mime, 'products', product.slug);
+  await query('UPDATE products SET image = $1 WHERE id = $2', [url, product.id]);
+  return { main: url };
+}
+
 adminRouter.post('/products/:id/images', handleUpload(imageUpload), wrap(async (req, res) => {
-  const id = Number(req.params.id);
-  const product = Number.isInteger(id) ? await row('SELECT id, slug FROM products WHERE id = $1', [id]) : null;
+  const product = await productForImage(req.params.id);
   if (!product) return fail(res, 404, 'not_found');
   if (!req.file) return fail(res, 400, 'image_required', { fields: { image: 'required' } });
-  const mime = detectMime(req.file.buffer);
-  if (!mime || !isImageMime(mime)) return fail(res, 400, 'image_invalid_type', { fields: { image: 'image_invalid_type' } });
-  if ((await row('SELECT COUNT(*) AS n FROM product_images WHERE product_id = $1', [id])).n >= MAX_GALLERY) return fail(res, 409, 'too_many_images');
-  const url = await saveImage(req.file.buffer, mime, 'products', `${product.slug}-gallery`);
-  const created = await row(
-    'INSERT INTO product_images (product_id, url, sort) VALUES ($1, $2, COALESCE((SELECT MAX(sort) + 1 FROM product_images WHERE product_id = $1), 0)) RETURNING id, url',
-    [id, url],
-  );
-  return ok(res, created, 201);
+  const result = await attachPhoto(product, req.file.buffer, 'gallery');
+  if (result.error) return fail(res, result.status, result.error, { fields: { image: result.error } });
+  return ok(res, result.image, 201);
+}));
+
+// Заменить главное фото (иллюстрация → настоящее фото) без правки остальных полей товара
+adminRouter.put('/products/:id/main-image', handleUpload(imageUpload), wrap(async (req, res) => {
+  const product = await productForImage(req.params.id);
+  if (!product) return fail(res, 404, 'not_found');
+  if (!req.file) return fail(res, 400, 'image_required', { fields: { image: 'required' } });
+  const result = await attachPhoto(product, req.file.buffer, 'main');
+  if (result.error) return fail(res, result.status, result.error, { fields: { image: result.error } });
+  return ok(res, { image: result.main });
+}));
+
+// Импорт по ссылке: сервер сам скачивает файл (только https, внутренние адреса запрещены)
+adminRouter.post('/products/:id/images/from-url', wrap(async (req, res) => {
+  const product = await productForImage(req.params.id);
+  if (!product) return fail(res, 404, 'not_found');
+  const as = req.body?.as === 'gallery' ? 'gallery' : 'main';
+  let buffer;
+  try {
+    buffer = await fetchRemoteImage(req.body?.url, { maxBytes: config.limits.imageBytes, allowPrivate: process.env.IMAGE_IMPORT_ALLOW_PRIVATE === '1' });
+  } catch (err) {
+    const known = ['invalid_url', 'blocked_host', 'too_large', 'fetch_timeout', 'too_many_redirects', 'fetch_failed'];
+    return fail(res, 400, known.includes(err.code) ? err.code : 'fetch_failed');
+  }
+  const result = await attachPhoto(product, buffer, as);
+  if (result.error) return fail(res, result.status, result.error);
+  return ok(res, as === 'gallery' ? result.image : { image: result.main }, 201);
 }));
 
 adminRouter.delete('/products/:id/images/:imageId', wrap(async (req, res) => {

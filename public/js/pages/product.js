@@ -8,7 +8,7 @@ import {
 import { parseHash, actions, go } from '../router.js';
 import { icons } from '../icons.js';
 import { getUser } from '../store.js';
-import { stars, compareButton } from '../components.js';
+import { stars, compareButton, isPhoto } from '../components.js';
 
 const ui = { slug: '', rating: 0 };
 
@@ -17,12 +17,12 @@ const fmtDate = (iso) => new Date(iso).toLocaleDateString(getLang() === 'uz' ? '
 function galleryHtml(product) {
   const photos = [product.image, ...(product.images ?? []).map((i) => i.url)];
   return html`
-    <div class="product-img card spot">
-      <img id="gallery-main" src="${photos[0]}" alt="${product.brand} ${product.name}">
+    <div class="pg ${photos.length > 1 ? '' : 'single'}" id="pg">
       ${photos.length > 1 ? html`
-        <div class="thumbs" role="list" aria-label="${t('product.gallery')}">
-          ${photos.map((src, i) => html`<button type="button" class="thumb ${i === 0 ? 'active' : ''}" data-action="gallery-pick" data-src="${src}" aria-label="${t('product.gallery')} ${i + 1}"><img src="${src}" alt="" loading="lazy"></button>`)}
+        <div class="pg-thumbs" role="list" aria-label="${t('product.gallery')}">
+          ${photos.map((src, i) => html`<button type="button" class="pg-thumb ${isPhoto(src) ? 'is-photo' : ''} ${i === 0 ? 'active' : ''}" data-action="gallery-pick" data-src="${src}" aria-label="${t('product.gallery')} ${i + 1}"><img src="${src}" alt="" loading="lazy"></button>`)}
         </div>` : ''}
+      <div class="pg-main ${isPhoto(photos[0]) ? 'is-photo' : ''}" id="pg-main"><img id="gallery-main" src="${photos[0]}" alt="${product.brand} ${product.name}"></div>
     </div>`;
 }
 
@@ -132,8 +132,24 @@ export const productPage = {
 
 actions['gallery-pick'] = (el) => {
   $('#gallery-main').src = el.dataset.src;
-  document.querySelectorAll('.thumbs .thumb').forEach((b) => b.classList.toggle('active', b === el));
+  $('#pg-main').classList.toggle('is-photo', isPhoto(el.dataset.src));
+  $('#pg-main').classList.remove('zoom');
+  document.querySelectorAll('.pg-thumb').forEach((b) => b.classList.toggle('active', b === el));
 };
+
+// увеличение настоящего фото при наведении: точка под курсором остаётся в центре увеличения
+document.addEventListener('mousemove', (e) => {
+  const box = e.target.closest?.('.pg-main.is-photo');
+  if (!box) return;
+  const r = box.getBoundingClientRect();
+  const img = box.querySelector('img');
+  img.style.transformOrigin = `${((e.clientX - r.left) / r.width) * 100}% ${((e.clientY - r.top) / r.height) * 100}%`;
+  box.classList.add('zoom');
+});
+document.addEventListener('mouseout', (e) => {
+  const box = e.target.closest?.('.pg-main');
+  if (box && !box.contains(e.relatedTarget)) box.classList.remove('zoom');
+});
 
 actions['scroll-reviews'] = (_el, e) => {
   e.preventDefault();

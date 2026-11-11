@@ -89,3 +89,19 @@ ul.form-error { padding-left: 12px; }
 .gallery-grid img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; background: var(--surface-2); }
 .stars-admin { color: var(--warn); letter-spacing: 1px; white-space: nowrap; }
 .review-body { max-width: 420px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Фото товаров */
+.photos-summary { display: grid; gap: 8px; padding: 14px 16px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.ph-bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.ph-bar i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+.photos-block { margin-top: 22px; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin-top: 12px; }
+.ph-tile { margin: 0; display: grid; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.ph-img { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+.ph-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.ph-img.real { background: #fff; }
+.ph-img .badge { position: absolute; left: 6px; top: 6px; }
+.ph-tile figcaption { display: grid; gap: 2px; line-height: 1.25; }
+.ph-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.ok-text { color: var(--ok); }
+.dropzone.drag { outline: 2px dashed var(--accent); }

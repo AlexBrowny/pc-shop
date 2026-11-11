@@ -19,7 +19,9 @@ const wrap = (fn) => (req, res, next) => fn(req, res).catch(next);
 const RATING_JOIN = `
   LEFT JOIN (SELECT product_id, AVG(rating) AS avg, COUNT(*) AS n FROM reviews WHERE status = 'published' GROUP BY product_id) r
     ON r.product_id = p.id`;
-const PRODUCT_COLUMNS = 'p.*, COALESCE(r.avg, 0)::float AS rating_avg, COALESCE(r.n, 0)::int AS rating_count';
+// image2 — первое фото галереи: карточка показывает его при наведении (как на маркетплейсах)
+const PRODUCT_COLUMNS = `p.*, COALESCE(r.avg, 0)::float AS rating_avg, COALESCE(r.n, 0)::int AS rating_count,
+  (SELECT url FROM product_images i WHERE i.product_id = p.id ORDER BY i.sort, i.id LIMIT 1) AS image2`;
 
 catalogRouter.get('/categories', wrap(async (_req, res) => {
   const data = await rows(

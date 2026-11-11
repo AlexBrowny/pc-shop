@@ -65,6 +65,9 @@ const ERROR_TEXT = {
   less_than_cores: 'потоков не может быть меньше ядер', mismatch: 'тип и интерфейс не сочетаются', image_invalid_type: 'нужен PNG, JPG или WEBP',
   unauthorized: 'нужно войти', invalid_credentials: 'неверный логин или пароль', too_many_requests: 'слишком много попыток, подождите',
   validation: 'проверьте поля формы', order_cancelled: 'отменённый заказ нельзя изменить', file_too_large: 'файл слишком большой',
+  invalid_url: 'нужна ссылка https://…', blocked_host: 'этот адрес запрещён', too_large: 'файл слишком большой', fetch_timeout: 'сайт не ответил вовремя',
+  too_many_redirects: 'слишком много перенаправлений', fetch_failed: 'не удалось скачать файл по ссылке', too_many_images: 'в галерее уже 8 фото',
+  image_required: 'выберите файл',
 };
 export const errorText = (code) => ERROR_TEXT[code] ?? code;
 
