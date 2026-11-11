@@ -10,7 +10,7 @@ pg.types.setTypeParser(1184, (v) => new Date(v).toISOString());
 
 export const pool = new pg.Pool({
   connectionString: config.db.url,
-  max: 10,
+  max: process.env.VERCEL ? 3 : 10,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 15_000,
   ...(config.db.schema ? { options: `-c search_path=${config.db.schema},public` } : {}),

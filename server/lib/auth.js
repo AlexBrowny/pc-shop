@@ -1,11 +1,16 @@
-// Аутентификация админки: пароль (scrypt или из окружения), серверные сессии, cookie HttpOnly + SameSite=Strict.
+// Аутентификация админки: пароль (scrypt или из окружения), подписанные stateless-сессии (работают и на serverless),
+// cookie HttpOnly + SameSite=Strict.
 import crypto from 'node:crypto';
 import { config } from '../config.js';
 import { getSetting, setSetting } from './settings.js';
 
 export const SESSION_COOKIE = 'pcm_admin';
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
-const sessions = new Map(); // token -> expiresAt
+
+// Ключ подписи: SESSION_SECRET или производный от пароля админа (смена пароля сбрасывает все сессии).
+const SIGNING_KEY = process.env.SESSION_SECRET
+  || (config.admin.password ? crypto.createHash('sha256').update(`pcm-session:${config.admin.password}`).digest('hex') : crypto.randomBytes(32).toString('hex'));
+const sign = (payload) => crypto.createHmac('sha256', SIGNING_KEY).update(payload).digest('base64url');
 
 const digest = (value) => crypto.createHash('sha256').update(String(value)).digest();
 const safeEqual = (a, b) => crypto.timingSafeEqual(digest(a), digest(b));
@@ -48,25 +53,22 @@ export async function checkCredentials(username, password) {
   return userOk && passOk;
 }
 
+/** Токен вида `<expires>.<nonce>.<hmac>`: сервер ничего не хранит, подлинность проверяется подписью. */
 export function createSession() {
-  const token = crypto.randomBytes(32).toString('base64url');
-  sessions.set(token, Date.now() + SESSION_TTL_MS);
-  return token;
+  const payload = `${Date.now() + SESSION_TTL_MS}.${crypto.randomBytes(16).toString('base64url')}`;
+  return `${payload}.${sign(payload)}`;
 }
 
-export function destroySession(token) {
-  sessions.delete(token);
-}
+/** Выход: cookie стирается; серверного состояния нет (токен и так истекает через 8 часов). */
+export function destroySession() {}
 
 export function isValidSession(token) {
   if (!token) return false;
-  const expires = sessions.get(token);
-  if (!expires) return false;
-  if (expires < Date.now()) {
-    sessions.delete(token);
-    return false;
-  }
-  return true;
+  const parts = String(token).split('.');
+  if (parts.length !== 3) return false;
+  const payload = `${parts[0]}.${parts[1]}`;
+  if (!safeEqual(parts[2], sign(payload))) return false;
+  return Number(parts[0]) > Date.now();
 }
 
 export function parseCookies(header = '') {

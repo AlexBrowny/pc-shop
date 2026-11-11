@@ -20,7 +20,7 @@ function walk(dir) {
   });
 }
 
-const files = ['server', 'public', 'scripts', 'tests', 'data'].flatMap((d) => walk(path.join(root, d)));
+const files = ['server', 'public', 'scripts', 'tests', 'data', 'api'].flatMap((d) => walk(path.join(root, d)));
 const failures = [];
 for (const file of files) {
   try {

@@ -5,3 +5,7 @@ data/uploads/
 .neon
 
 .env.local
+
+.vercel
+.env*
+.vercel
