@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Студия рендеров</title>
+  <script type="importmap">{"imports":{"three":"/vendor/three/build/three.module.js","three/addons/":"/vendor/three/examples/jsm/"}}</script>
+  <style>body{margin:0;background:#e9ebf0;font:14px system-ui}canvas{display:block;width:100%;max-width:780px;height:auto;margin:0 auto;background:#fff}#log{padding:8px;white-space:pre-wrap}</style>
+</head>
+<body>
+  <canvas id="view" width="1200" height="900"></canvas>
+  <div id="log"></div>
+  <script type="module">
+    import { createStudio } from '/js/viewer/studio.js';
+    const studio = createStudio({ width: 1200, height: 900 });
+    const view = document.getElementById('view');
+    const log = document.getElementById('log');
+    const product = async (id) => (await (await fetch(`/api/products?ids=${id}`)).json()).data[0];
+
+    /** Снимает товар и показывает результат на странице (для проверки глазами). */
+    window.shot = async (id) => {
+      const p = await product(id);
+      const blob = await studio.render(p);
+      view.getContext('2d').drawImage(studio.canvas, 0, 0);
+      log.textContent = `${p.brand} ${p.name} · ${Math.round(blob.size / 1024)} КБ`;
+      return { name: `${p.brand} ${p.name}`, kb: Math.round(blob.size / 1024) };
+    };
+
+    /** Снимает и загружает как главное фото-рендер (нужен вход в админку этой же вкладки). */
+    window.publish = async (id) => {
+      const p = await product(id);
+      const blob = await studio.render(p);
+      const form = new FormData();
+      form.set('image', blob, `${p.slug}.jpg`);
+      form.set('kind', 'render');
+      const res = await fetch(`/api/admin/products/${id}/main-image`, { method: 'PUT', headers: { 'x-admin-csrf': '1' }, body: form });
+      const body = await res.json();
+      return { id, name: `${p.brand} ${p.name}`, ok: res.ok, kb: Math.round(blob.size / 1024), error: body.error };
+    };
+
+    window.adminLogin = async (username, password) => {
+      const res = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+      return res.status;
+    };
+    window.studioReady = true;
+  </script>
+</body>
+</html>

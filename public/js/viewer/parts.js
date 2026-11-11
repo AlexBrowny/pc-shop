@@ -20,7 +20,7 @@ function cableTube(points, radius = 0.55) {
   return mesh;
 }
 
-function buildCpu({ parts, lay }) {
+export function buildCpu({ parts, lay }) {
   const g = new THREE.Group();
   const accent = accentOf(parts.cpu.brand);
   g.add(roundedBox(3.9, 3.9, 0.35, mat.plastic('#1d5a43'), 0.1, [0, 0, 0]));
@@ -34,7 +34,7 @@ function buildCpu({ parts, lay }) {
 }
 
 /** Модуль памяти: чёрная плата, радиатор со скосом, RGB-диффузор сверху. Толщина — по x, длина — по y, высота — по z. */
-function buildRamStick(ram) {
+export function buildRamStick(ram) {
   const accent = accentOf(ram.brand);
   const g = new THREE.Group();
   g.add(box(0.2, 13.3, 3.4, mat.plastic('#0b0c0f'), [0, 0, 0]));
@@ -62,7 +62,7 @@ function buildRam({ parts, lay }) {
   return { object: g, anchor: new THREE.Vector3(lay.ramX[slots[0]], lay.ramY + 7.2, 4.8) };
 }
 
-function buildSataSsd(drive) {
+export function buildSataSsd(drive) {
   const g = new THREE.Group();
   g.add(roundedBox(10, 0.9, 7, mat.steel('#8f98a8'), 0.25));
   const label = labelPlane(drive.brand, 5, 1.2, { fg: '#12151c' });
@@ -72,7 +72,7 @@ function buildSataSsd(drive) {
   return g;
 }
 
-function buildHdd(drive) {
+export function buildHdd(drive) {
   const g = new THREE.Group();
   g.add(roundedBox(14.7, 2.6, 10.2, mat.steel('#aeb6c4'), 0.3));
   const sticker = new THREE.Mesh(new THREE.PlaneGeometry(9.5, 6.2), new THREE.MeshStandardMaterial({ color: '#e9ecf1', roughness: 0.6 }));

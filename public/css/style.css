@@ -628,3 +628,5 @@ html.theme-fade, html.theme-fade *, html.theme-fade *::before, html.theme-fade *
   .pg-thumbs { flex-direction: row; order: 2; max-height: none; overflow-x: auto; }
   .pg-thumb { width: 64px; height: 64px; }
 }
+
+.pg-note { grid-column: 1 / -1; margin: 4px 0 0; text-align: center; }

@@ -251,7 +251,7 @@ const productForImage = async (rawId) => {
  * Сохраняет фото товара: as='main' заменяет главное фото (иллюстрацию), as='gallery' добавляет в галерею.
  * Тип файла определяется по содержимому (SVG и всё, что не PNG/JPEG/WEBP, отклоняется).
  */
-async function attachPhoto(product, buffer, as) {
+async function attachPhoto(product, buffer, as, kind = 'photo') {
   const mime = detectMime(buffer);
   if (!mime || !isImageMime(mime)) return { error: 'image_invalid_type', status: 400 };
   if (as === 'gallery') {
@@ -264,7 +264,7 @@ async function attachPhoto(product, buffer, as) {
     return { image };
   }
   const url = await saveImage(buffer, mime, 'products', product.slug);
-  await query('UPDATE products SET image = $1 WHERE id = $2', [url, product.id]);
+  await query('UPDATE products SET image = $1, image_kind = $2 WHERE id = $3', [url, kind === 'render' ? 'render' : 'photo', product.id]);
   return { main: url };
 }
 
@@ -282,7 +282,7 @@ adminRouter.put('/products/:id/main-image', handleUpload(imageUpload), wrap(asyn
   const product = await productForImage(req.params.id);
   if (!product) return fail(res, 404, 'not_found');
   if (!req.file) return fail(res, 400, 'image_required', { fields: { image: 'required' } });
-  const result = await attachPhoto(product, req.file.buffer, 'main');
+  const result = await attachPhoto(product, req.file.buffer, 'main', req.body?.kind);
   if (result.error) return fail(res, result.status, result.error, { fields: { image: result.error } });
   return ok(res, { image: result.main });
 }));

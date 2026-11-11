@@ -5,7 +5,8 @@ import {
 } from '/admin/common.js';
 import { suggestProduct, photoRole } from '/admin/match.js';
 
-const isIllustration = (p) => String(p.image).endsWith('.svg');
+const KIND_LABEL = { illustration: 'иллюстрация', render: 'рендер', photo: 'фото' };
+const isReal = (p) => p.image_kind === 'photo';
 const errMessage = (err) => (err instanceof ApiError ? errorText(err.code) : 'ошибка соединения');
 
 export async function photosView(main) {
@@ -40,18 +41,19 @@ export async function photosView(main) {
     </section>`.toString();
 
   const drawSummary = () => {
-    const real = products.filter((p) => !isIllustration(p)).length;
+    const real = products.filter(isReal).length;
+    const renders = products.filter((p) => p.image_kind === 'render').length;
     const pct = products.length ? Math.round((real / products.length) * 100) : 0;
     $('#ph-summary', main).innerHTML = html`
-      <div><b>${real}</b> из ${products.length} товаров с настоящим фото <span class="muted">(остальные показывают иллюстрацию)</span></div>
+      <div><b>${real}</b> из ${products.length} товаров с настоящим фото <span class="muted">· студийных рендеров: ${renders}, остальные показывают иллюстрацию</span></div>
       <div class="ph-bar"><i style="width:${pct}%"></i></div>`.toString();
   };
 
   const drawGrid = () => {
-    const list = products.filter((p) => (state.filter === 'all' ? true : state.filter === 'missing' ? isIllustration(p) : !isIllustration(p)));
+    const list = products.filter((p) => (state.filter === 'all' ? true : state.filter === 'missing' ? !isReal(p) : isReal(p)));
     $('#ph-grid', main).innerHTML = list.length ? list.map((p) => html`
       <figure class="ph-tile" data-id="${p.id}">
-        <div class="ph-img ${isIllustration(p) ? '' : 'real'}"><img src="${p.image}" alt="" loading="lazy"><span class="badge ${isIllustration(p) ? 'new' : 'paid'}">${isIllustration(p) ? 'иллюстрация' : 'фото'}</span></div>
+        <div class="ph-img ${p.image_kind === 'illustration' ? '' : 'real'}"><img src="${p.image}" alt="" loading="lazy"><span class="badge ${isReal(p) ? 'paid' : 'new'}">${KIND_LABEL[p.image_kind] ?? 'иллюстрация'}</span></div>
         <figcaption><span class="muted small">${CATEGORY_LABEL[p.category]} · ${p.brand}</span><b>${p.name}</b></figcaption>
         <div class="ph-actions">
           <label class="btn small">Загрузить<input type="file" accept="image/png,image/jpeg,image/webp" data-main-file="${p.id}" hidden></label>

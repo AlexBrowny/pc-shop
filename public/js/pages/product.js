@@ -23,6 +23,7 @@ function galleryHtml(product) {
           ${photos.map((src, i) => html`<button type="button" class="pg-thumb ${isPhoto(src) ? 'is-photo' : ''} ${i === 0 ? 'active' : ''}" data-action="gallery-pick" data-src="${src}" aria-label="${t('product.gallery')} ${i + 1}"><img src="${src}" alt="" loading="lazy"></button>`)}
         </div>` : ''}
       <div class="pg-main ${isPhoto(photos[0]) ? 'is-photo' : ''}" id="pg-main"><img id="gallery-main" src="${photos[0]}" alt="${product.brand} ${product.name}"></div>
+      ${product.image_kind === 'render' ? html`<p class="pg-note muted small">${t('product.render_note')}</p>` : ''}
     </div>`;
 }
 

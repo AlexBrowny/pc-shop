@@ -155,8 +155,9 @@ test('главное фото заменяет иллюстрацию; без в
   const res = await admin(`/products/${product.id}/main-image`, { method: 'PUT', form: file(PNG) });
   assert.equal(res.status, 200);
   assert.match(res.body.data.image, /^\/img\/products\/.+\.png$/);
-  const stored = await row('SELECT image FROM products WHERE id = $1', [product.id]);
+  const stored = await row('SELECT image, image_kind FROM products WHERE id = $1', [product.id]);
   assert.equal(stored.image, res.body.data.image);
+  assert.equal(stored.image_kind, 'photo', 'загруженный вручную файл считается настоящим фото');
   assert.equal((await fetch(`${base}${stored.image}`)).status, 200);
 });
 
@@ -196,4 +197,21 @@ test('в списке товаров приходит второе фото (д�
   const detail = (await (await fetch(`${base}/api/products/${withPhoto.slug}`)).json()).data;
   assert.equal(detail.images.length, 1);
   assert.equal(detail.images[0].url, withPhoto.image2);
+});
+
+test('студийный рендер помечается отдельно: на странице товара показывается пометка «иллюстративное изображение»', async () => {
+  const target = await row("SELECT id, slug FROM products WHERE category = 'psu' ORDER BY id LIMIT 1");
+  assert.equal((await row('SELECT image_kind FROM products WHERE id = $1', [target.id])).image_kind, 'illustration');
+  const form = file(PNG);
+  form.set('kind', 'render');
+  assert.equal((await admin(`/products/${target.id}/main-image`, { method: 'PUT', form })).status, 200);
+  const detail = (await (await fetch(`${base}/api/products/${target.slug}`)).json()).data;
+  assert.equal(detail.image_kind, 'render');
+  assert.match(detail.image, /\.png$/);
+
+  // произвольное значение kind не принимается: остаётся «photo»
+  const forged = file(PNG);
+  forged.set('kind', 'illustration; DROP TABLE products');
+  assert.equal((await admin(`/products/${target.id}/main-image`, { method: 'PUT', form: forged })).status, 200);
+  assert.equal((await row('SELECT image_kind FROM products WHERE id = $1', [target.id])).image_kind, 'photo');
 });

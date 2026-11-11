@@ -65,6 +65,9 @@ export function createApp() {
   app.get(['/admin', '/admin/'], adminHeaders, (_req, res) => res.sendFile(path.join(adminUiDir, 'index.html')));
   app.use('/admin', adminHeaders, express.static(adminUiDir, { index: false }));
 
+  // Студия рендеров товаров (только для разработки: запуск с STUDIO=1)
+  if (process.env.STUDIO === '1') app.get('/studio', (_req, res) => res.sendFile(path.join(config.root, 'scripts', 'studio.html')));
+
   // Картинки товаров и игр лежат в Neon Object Storage (бакет media) и отдаются отсюда
   app.use('/img', mediaRouter);
 
